@@ -7,18 +7,21 @@ y define los metadatos de la documentación.
 """
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from medibook.config.logging_config import setup_logging
 from medibook.api.middleware import RequestLoggingMiddleware
 
 from medibook.api.routes import appointments, doctors, health, patients
+from medibook.api.routes import auth
 
 # ---------- Metadata de la API ----------
 
 DESCRIPTION = """
 ## 🏥 MediBook API
 
-Sistema de gestión de citas médicas construido con patrones de diseño GoF.
+Sistema de gestión de citas médicas construido con patrones de diseño GoF
+y principios SOLID.
 
 ### Patrones de Diseño Integrados
 
@@ -31,9 +34,20 @@ Sistema de gestión de citas médicas construido con patrones de diseño GoF.
 | **Decorator** | `GET /appointments/{id}/summary` — resumen dinámico |
 | **Flyweight** | `POST /doctors` — reutiliza especialidades existentes |
 | **Singleton** | Configuración global de la clínica |
+
+### Seguridad
+
+- 🔐 Autenticación JWT (Bearer Token)
+- 🛡️ RBAC con roles: ADMIN, DOCTOR, RECEPTIONIST, PATIENT
+- 🔑 Hash bcrypt para contraseñas
+- 📝 Usa el botón **Authorize** arriba para autenticarte
 """
 
 TAGS_METADATA = [
+    {
+        "name": "Autenticación",
+        "description": "Registro, login y gestión de sesiones JWT.",
+    },
     {
         "name": "Citas Médicas",
         "description": "Operaciones CRUD y patrones de diseño sobre citas.",
@@ -68,10 +82,20 @@ app = FastAPI(
 setup_logging(level="INFO")
 app.add_middleware(RequestLoggingMiddleware)
 
+# CORS — Permitir orígenes en desarrollo (restringir en producción)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:8000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # ---------- Registrar Routers ----------
 
 API_PREFIX = "/api/v1"
 
+app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(health.router, prefix=API_PREFIX)
 app.include_router(appointments.router, prefix=API_PREFIX)
 app.include_router(doctors.router, prefix=API_PREFIX)

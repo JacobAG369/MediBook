@@ -35,6 +35,8 @@ from medibook.services.appointment_decorators import (
     UrgentAppointmentDecorator,
 )
 from medibook.services.observers import BookingNotifier, ConsoleLogObserver, DoctorNotificationObserver
+from medibook.domain.user import User
+from medibook.api.auth.dependencies import get_current_user, require_receptionist, require_doctor
 
 router = APIRouter(prefix="/appointments", tags=["Citas Médicas"])
 
@@ -50,7 +52,11 @@ _notifier.register(DoctorNotificationObserver())
     status_code=status.HTTP_201_CREATED,
     summary="Crear cita médica",
 )
-def create_appointment(payload: AppointmentCreate, db: Session = Depends(get_db)):
+def create_appointment(
+    payload: AppointmentCreate,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_receptionist),
+):
     """
     Crea una nueva cita médica.
 
@@ -163,6 +169,7 @@ def update_appointment(
     appointment_id: int,
     payload: AppointmentUpdate,
     db: Session = Depends(get_db),
+    _current_user: User = Depends(require_receptionist),
 ):
     """Actualiza parcialmente los datos de una cita."""
     appointment = (
@@ -190,7 +197,11 @@ def update_appointment(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Cancelar cita",
 )
-def cancel_appointment(appointment_id: int, db: Session = Depends(get_db)):
+def cancel_appointment(
+    appointment_id: int,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_receptionist),
+):
     """
     Cancela una cita cambiando su estado a CANCELLED.
     No se elimina físicamente para preservar el historial.
@@ -223,6 +234,7 @@ def clone_appointment(
     appointment_id: int,
     payload: AppointmentClone,
     db: Session = Depends(get_db),
+    _current_user: User = Depends(require_doctor),
 ):
     """
     Clona una cita existente usando el patrón **Prototype**.

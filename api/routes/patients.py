@@ -15,6 +15,8 @@ from medibook.api.schemas.patient import (
     PatientUpdate,
 )
 from medibook.domain.patient import Patient
+from medibook.domain.user import User
+from medibook.api.auth.dependencies import require_admin, require_receptionist
 
 router = APIRouter(prefix="/patients", tags=["Pacientes"])
 
@@ -25,7 +27,11 @@ router = APIRouter(prefix="/patients", tags=["Pacientes"])
     status_code=status.HTTP_201_CREATED,
     summary="Registrar paciente",
 )
-def create_patient(payload: PatientCreate, db: Session = Depends(get_db)):
+def create_patient(
+    payload: PatientCreate,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_receptionist),
+):
     """Crea un nuevo registro de paciente en el sistema."""
     patient = Patient(
         full_name=payload.full_name,
@@ -76,6 +82,7 @@ def update_patient(
     patient_id: int,
     payload: PatientUpdate,
     db: Session = Depends(get_db),
+    _current_user: User = Depends(require_receptionist),
 ):
     """Actualiza parcialmente los datos de un paciente."""
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
@@ -99,7 +106,11 @@ def update_patient(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar paciente",
 )
-def delete_patient(patient_id: int, db: Session = Depends(get_db)):
+def delete_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_admin),
+):
     """Elimina un paciente del sistema."""
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:

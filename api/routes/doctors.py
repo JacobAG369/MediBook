@@ -18,12 +18,10 @@ from medibook.api.schemas.doctor import (
     DoctorUpdate,
 )
 from medibook.domain.doctor import Doctor
-from medibook.services.booking_service import BookingService
+from medibook.domain.user import User
+from medibook.api.auth.dependencies import require_admin, require_receptionist
 
 router = APIRouter(prefix="/doctors", tags=["Doctores"])
-
-# Instancia del servicio para operaciones que usan patrones de diseño
-booking_service = BookingService()
 
 
 @router.post(
@@ -32,7 +30,11 @@ booking_service = BookingService()
     status_code=status.HTTP_201_CREATED,
     summary="Registrar doctor",
 )
-def create_doctor(payload: DoctorCreate, db: Session = Depends(get_db)):
+def create_doctor(
+    payload: DoctorCreate,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_admin),
+):
     """
     Crea un nuevo doctor asociado a una especialidad.
 
@@ -114,6 +116,7 @@ def update_doctor(
     doctor_id: int,
     payload: DoctorUpdate,
     db: Session = Depends(get_db),
+    _current_user: User = Depends(require_receptionist),
 ):
     """Actualiza parcialmente los datos de un doctor."""
     doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
@@ -137,7 +140,11 @@ def update_doctor(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Desactivar doctor",
 )
-def deactivate_doctor(doctor_id: int, db: Session = Depends(get_db)):
+def deactivate_doctor(
+    doctor_id: int,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_admin),
+):
     """
     Desactiva un doctor (soft delete).
     No se elimina físicamente para preservar el historial de citas.

@@ -1,4 +1,4 @@
-# 🏥 MediBook
+# MediBook
 
 Sistema de gestión de citas médicas desarrollado en Python, con énfasis en la implementación de **Patrones de Diseño (GoF)** y una arquitectura limpia por capas.
 
