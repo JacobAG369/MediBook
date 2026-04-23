@@ -1,4 +1,5 @@
 # medibook/scripts/init_db.py
+from medibook.config.logging_config import get_logger, setup_logging
 from medibook.infra.db import Base, engine, SessionLocal
 
 # Importamos explícitamente los modelos para que se registren en Base.metadata
@@ -8,10 +9,13 @@ from medibook.domain.patient import Patient
 from medibook.domain.appointment import Appointment
 
 
+logger = get_logger("scripts.init_db")
+
+
 def create_tables():
-    print(">>> Creando tablas en la base de datos (si no existen)...")
+    logger.info("Creando tablas en la base de datos (si no existen)...")
     Base.metadata.create_all(bind=engine)
-    print(">>> Tablas listas.")
+    logger.info("Tablas listas.")
 
 
 def seed_minimo():
@@ -28,15 +32,16 @@ def seed_minimo():
                 session.add(Specialty(name=name))
 
         session.commit()
-        print(">>> Datos mínimos insertados (specialties).")
+        logger.info("Datos mínimos insertados (specialties).")
     except Exception as e:
         session.rollback()
-        print(f"!!! Error en seed_minimo: {e}")
+        logger.error("Error en seed_minimo: %s", e)
     finally:
         session.close()
 
 
 if __name__ == "__main__":
+    setup_logging()
     create_tables()
     seed_minimo()
-    print(">>> init_db completado.")
+    logger.info("init_db completado.")

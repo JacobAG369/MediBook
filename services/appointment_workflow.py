@@ -4,6 +4,10 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict
 from uuid import uuid4
 
+from medibook.config.logging_config import get_logger
+
+logger = get_logger("services.workflow")
+
 from medibook.infra.db import SessionLocal
 from medibook.domain.appointment import Appointment
 
@@ -111,7 +115,7 @@ class InPersonAppointmentWorkflow(BaseAppointmentWorkflow):
         return appointment
 
     def after_save(self, appointment: Appointment) -> None:
-        print(f">>> Cita PRESENCIAL creada con id={appointment.id}")
+        logger.info("Cita PRESENCIAL creada con id=%s", appointment.id)
 
 
 class OnlineAppointmentWorkflow(BaseAppointmentWorkflow):
@@ -151,7 +155,8 @@ class OnlineAppointmentWorkflow(BaseAppointmentWorkflow):
           - notificar a un Observer
         Por ahora solo mostramos el link en consola.
         """
-        print(
-            f">>> Cita ONLINE creada con id={appointment.id}, "
-            f"link={appointment.meeting_link}"
+        logger.info(
+            "Cita ONLINE creada con id=%s, link=%s",
+            appointment.id,
+            appointment.meeting_link,
         )

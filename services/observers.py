@@ -3,6 +3,10 @@
 from abc import ABC, abstractmethod
 from typing import List
 
+from medibook.config.logging_config import get_logger
+
+logger = get_logger("services.observers")
+
 from medibook.domain.appointment import Appointment
 
 class AppointmentObserver(ABC):
@@ -53,10 +57,12 @@ class ConsoleLogObserver(AppointmentObserver):
     """
 
     def on_appointment_created(self, appointment: Appointment) -> None:
-        print(
-            f"[ConsoleLogObserver] Nueva cita creada: "
-            f"id={appointment.id}, doctor_id={appointment.doctor_id}, "
-            f"patient_id={appointment.patient_id}, start={appointment.start_time}"
+        logger.info(
+            "Nueva cita creada: id=%s, doctor_id=%s, patient_id=%s, start=%s",
+            appointment.id,
+            appointment.doctor_id,
+            appointment.patient_id,
+            appointment.start_time,
         )
 
 
@@ -64,7 +70,8 @@ class DoctorNotificationObserver(AppointmentObserver):
    
 
     def on_appointment_created(self, appointment: Appointment) -> None:
-        print(
-            f"[DoctorNotificationObserver] Notificar al doctor {appointment.doctor_id} "
-            f"de nueva cita (id={appointment.id})."
+        logger.info(
+            "Notificar al doctor %s de nueva cita (id=%s)",
+            appointment.doctor_id,
+            appointment.id,
         )
