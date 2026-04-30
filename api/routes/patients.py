@@ -112,6 +112,8 @@ def delete_patient(
     _current_user: User = Depends(require_admin),
 ):
     """Elimina un paciente del sistema."""
+    from sqlalchemy.exc import IntegrityError
+
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(
@@ -119,5 +121,15 @@ def delete_patient(
             detail=f"Paciente con id={patient_id} no encontrado",
         )
 
-    db.delete(patient)
-    db.commit()
+    try:
+        db.delete(patient)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "No se puede eliminar el paciente porque tiene citas médicas registradas. "
+                "Cancela o elimina sus citas primero."
+            ),
+        )

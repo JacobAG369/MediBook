@@ -6,9 +6,13 @@ Configura la instancia de FastAPI, monta los routers,
 sirve archivos estaticos y define los metadatos de la documentacion.
 """
 
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 
 from medibook.config.logging_config import setup_logging
 from medibook.api.middleware import RequestLoggingMiddleware
@@ -16,6 +20,9 @@ from medibook.api.middleware import RequestLoggingMiddleware
 from medibook.api.routes import appointments, doctors, health, patients
 from medibook.api.routes import auth
 from medibook.web.routes import router as web_router
+
+# Carga variables de entorno al inicio
+load_dotenv()
 
 # ---------- Metadata de la API ----------
 
@@ -88,13 +95,32 @@ app.mount("/static", StaticFiles(directory="medibook/web/static"), name="static"
 setup_logging(level="INFO")
 app.add_middleware(RequestLoggingMiddleware)
 
-# CORS
+# CORS — orígenes permitidos desde variable de entorno
+_raw_origins = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:8000"
+)
+ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
+)
+
+# SessionMiddleware — necesario para sesiones server-side (p. ej. flash messages)
+_secret_key = os.getenv("SECRET_KEY")
+if not _secret_key:
+    raise RuntimeError("SECRET_KEY no está definida en las variables de entorno")
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=_secret_key,
+    session_cookie="medibook_session",
+    max_age=3600,          # 1 hora
+    https_only=False,      # Cambiar a True en producción con HTTPS
+    same_site="lax",
 )
 
 # ---------- Registrar Routers ----------

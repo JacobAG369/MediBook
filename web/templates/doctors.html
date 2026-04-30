@@ -4,51 +4,383 @@
 {% block page_title %}Doctores{% endblock %}
 {% block page_subtitle %}Directorio de profesionales de la salud{% endblock %}
 
+{% block header_actions %}
+<button class="btn btn--primary" id="btn-nuevo-doctor" onclick="abrirModalDoctor()">
+  <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:white;fill:none;stroke-width:2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  Nuevo Doctor
+</button>
+{% endblock %}
+
 {% block content %}
+<!-- Barra de búsqueda -->
+<div class="card" style="margin-bottom:1.25rem;padding:1rem 1.25rem;">
+  <input class="form-input" type="text" id="filter-doctor" placeholder="Buscar por nombre o especialidad..." style="margin:0;max-width:340px;">
+</div>
+
+<!-- Grid de doctores -->
 <div class="entity-grid" id="doctor-grid">
   <div class="card" style="text-align:center;padding:3rem;grid-column:1/-1;">
     <p class="text-muted">Cargando directorio de doctores...</p>
+  </div>
+</div>
+
+<!-- Backdrop Modales -->
+<div class="slideover-backdrop" id="modal-doctor-backdrop" onclick="cerrarModalDoctor()"></div>
+
+<!-- Modal Crear / Editar Doctor -->
+<div class="slideover" id="modal-doctor">
+  <div class="slideover__header">
+    <span class="slideover__title" id="modal-doctor-titulo">Nuevo Doctor</span>
+    <button class="slideover__close" onclick="cerrarModalDoctor()">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="slideover__body">
+    <div id="modal-doctor-alert"></div>
+    <input type="hidden" id="doctor-id">
+
+    <div class="form-group">
+      <label class="form-label" for="doctor-nombre">Nombre completo *</label>
+      <input class="form-input" type="text" id="doctor-nombre" placeholder="Ej. Dr. Carlos Mendoza" maxlength="120" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="doctor-email">Correo electrónico</label>
+      <input class="form-input" type="email" id="doctor-email" placeholder="doctor@medibook.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="doctor-telefono">Teléfono</label>
+      <input class="form-input" type="text" id="doctor-telefono" placeholder="+52 55 9876 5432" maxlength="20">
+    </div>
+
+    <!-- Sólo visible al crear -->
+    <div id="campo-especialidad">
+      <div class="section-divider"></div>
+      <div class="form-group">
+        <label class="form-label" for="doctor-especialidad">Especialidad *</label>
+        <input class="form-input" type="text" id="doctor-especialidad" placeholder="Ej. Cardiología" maxlength="100" required>
+        <p style="font-size:0.78rem;color:var(--color-text-muted);margin-top:0.3rem;">Si ya existe se reutilizará (patrón Flyweight).</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="doctor-especialidad-desc">Descripción de especialidad</label>
+        <input class="form-input" type="text" id="doctor-especialidad-desc" placeholder="Descripción breve..." maxlength="255">
+      </div>
+    </div>
+
+    <!-- Solo visible al editar -->
+    <div id="campo-estado" style="display:none;">
+      <div class="section-divider"></div>
+      <div class="form-group">
+        <label class="form-label">Estado</label>
+        <div style="display:flex;gap:1rem;align-items:center;margin-top:0.35rem;">
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.88rem;">
+            <input type="radio" name="doctor-activo" id="doctor-activo-si" value="true"> Activo
+          </label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.88rem;">
+            <input type="radio" name="doctor-activo" id="doctor-activo-no" value="false"> Inactivo
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slideover__footer">
+    <button class="btn btn--ghost" onclick="cerrarModalDoctor()">Cancelar</button>
+    <button class="btn btn--primary" id="btn-guardar-doctor" onclick="guardarDoctor()">
+      <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:white;fill:none;stroke-width:2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Guardar
+    </button>
+  </div>
+</div>
+
+<!-- Modal Detalle Doctor -->
+<div class="slideover-backdrop" id="modal-detalle-backdrop" onclick="cerrarModalDetalle()"></div>
+<div class="slideover" id="modal-detalle-doctor">
+  <div class="slideover__header">
+    <span class="slideover__title">Detalle del Doctor</span>
+    <button class="slideover__close" onclick="cerrarModalDetalle()">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="slideover__body" id="detalle-doctor-body">
+    <!-- Contenido dinámico -->
+  </div>
+  <div class="slideover__footer">
+    <button class="btn btn--ghost" onclick="cerrarModalDetalle()">Cerrar</button>
+    <button class="btn btn--primary" id="btn-editar-desde-detalle" onclick="editarDesdeDetalle()">Editar</button>
+  </div>
+</div>
+
+<!-- Modal Confirmar Desactivar -->
+<div class="slideover-backdrop" id="modal-deact-backdrop" style="z-index:2100;"></div>
+<div id="modal-deact" style="
+  display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:2200;background:var(--color-surface);border:1px solid var(--color-border);
+  border-radius:var(--radius-lg);padding:2rem;width:min(420px,90vw);
+  box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+  <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+    <div style="width:40px;height:40px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#ef4444;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <div>
+      <div style="font-weight:600;color:var(--color-text-primary);">Desactivar doctor</div>
+      <div style="font-size:0.83rem;color:var(--color-text-muted);">El historial de citas se conservará</div>
+    </div>
+  </div>
+  <p style="font-size:0.9rem;color:var(--color-text-secondary);margin-bottom:1.5rem;">
+    ¿Desactivar a <strong id="deact-nombre"></strong>? Ya no aparecerá en el directorio activo.
+  </p>
+  <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+    <button class="btn btn--ghost" onclick="cerrarModalDeact()">Cancelar</button>
+    <button class="btn btn--danger" id="btn-confirmar-deact" onclick="confirmarDesactivar()">Desactivar</button>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+  let allDoctors = [];
+  let doctorDetalleActual = null;
+  let doctorADesactivarId = null;
+
+  // ── Render grid ──────────────────────────────────────────────────────
+  function renderDoctors(doctors) {
+    const grid = document.getElementById('doctor-grid');
+    if (!doctors.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+        <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <p>No hay doctores registrados</p>
+      </div>`;
+      return;
+    }
+    grid.innerHTML = doctors.map(d => {
+      const initials = (d.name || 'D').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+      const especialidad = d.specialty ? d.specialty.name : 'Sin especialidad';
+      return `
+      <div class="entity-card" style="cursor:pointer;transition:box-shadow 0.2s,transform 0.2s;"
+           onclick="verDetalle(${d.id})"
+           onmouseenter="this.style.boxShadow='0 8px 32px rgba(99,102,241,0.15)';this.style.transform='translateY(-2px)'"
+           onmouseleave="this.style.boxShadow='';this.style.transform=''">
+        <div class="entity-card__header">
+          <div class="entity-card__avatar">${initials}</div>
+          <div>
+            <div class="entity-card__name">Dr. ${d.name}</div>
+            <div class="entity-card__sub">${especialidad}</div>
+          </div>
+        </div>
+        <div class="entity-card__details">
+          ${d.email ? `<div class="entity-card__detail"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${d.email}</div>` : ''}
+          ${d.phone ? `<div class="entity-card__detail"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13 19.79 19.79 0 0 1 1.61 4.18 2 2 0 0 1 3.59 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.18 6.18l.93-.93a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${d.phone}</div>` : ''}
+          <div class="entity-card__detail" style="margin-top:0.5rem;display:flex;gap:0.5rem;justify-content:space-between;align-items:center;">
+            <span class="badge badge--${d.active !== false ? 'active' : 'inactive'}">${d.active !== false ? 'Activo' : 'Inactivo'}</span>
+            <div style="display:flex;gap:0.3rem;" onclick="event.stopPropagation()">
+              <button class="btn btn--ghost btn--sm" title="Editar" onclick="abrirModalDoctor(allDoctors.find(x=>x.id===${d.id}))">
+                <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              ${d.active !== false ? `<button class="btn btn--ghost btn--sm" title="Desactivar" style="color:#ef4444;" onclick="abrirModalDeact(${d.id},'${(d.name||'').replace(/'/g,"\\'")}')">
+                <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+              </button>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Filtro ───────────────────────────────────────────────────────────
+  document.getElementById('filter-doctor').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    renderDoctors(allDoctors.filter(d =>
+      (d.name || '').toLowerCase().includes(q) ||
+      (d.specialty && d.specialty.name.toLowerCase().includes(q))
+    ));
+  });
+
+  // ── Modal Detalle ────────────────────────────────────────────────────
+  async function verDetalle(id) {
+    try {
+      const d = await apiFetch(`/api/v1/doctors/${id}`);
+      doctorDetalleActual = d;
+      const initials = (d.name || 'D').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+      const especialidad = d.specialty ? d.specialty.name : 'Sin especialidad';
+      const desc = d.specialty && d.specialty.description ? d.specialty.description : '—';
+      document.getElementById('detalle-doctor-body').innerHTML = `
+        <div style="text-align:center;padding:1.5rem 0 1rem;">
+          <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:white;margin:0 auto 1rem;">${initials}</div>
+          <h2 style="font-size:1.2rem;font-weight:700;color:var(--color-text-primary);margin:0 0 0.25rem;">Dr. ${d.name}</h2>
+          <span class="badge badge--${d.active !== false ? 'active' : 'inactive'}">${d.active !== false ? 'Activo' : 'Inactivo'}</span>
+        </div>
+        <div class="section-divider"></div>
+        <div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:1rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0;border-bottom:1px solid var(--color-border);">
+            <span style="font-size:0.82rem;color:var(--color-text-muted);font-weight:500;">ID</span>
+            <span style="font-size:0.9rem;color:var(--color-text-primary);">#${d.id}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0;border-bottom:1px solid var(--color-border);">
+            <span style="font-size:0.82rem;color:var(--color-text-muted);font-weight:500;">Email</span>
+            <span style="font-size:0.9rem;color:var(--color-text-primary);">${d.email || '—'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0;border-bottom:1px solid var(--color-border);">
+            <span style="font-size:0.82rem;color:var(--color-text-muted);font-weight:500;">Teléfono</span>
+            <span style="font-size:0.9rem;color:var(--color-text-primary);">${d.phone || '—'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0;border-bottom:1px solid var(--color-border);">
+            <span style="font-size:0.82rem;color:var(--color-text-muted);font-weight:500;">Especialidad</span>
+            <span style="font-size:0.9rem;color:var(--color-text-primary);font-weight:600;">${especialidad}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem 0;">
+            <span style="font-size:0.82rem;color:var(--color-text-muted);font-weight:500;">Descripción especialidad</span>
+            <span style="font-size:0.9rem;color:var(--color-text-primary);max-width:60%;text-align:right;">${desc}</span>
+          </div>
+        </div>
+      `;
+      document.getElementById('modal-detalle-backdrop').classList.add('open');
+      document.getElementById('modal-detalle-doctor').classList.add('open');
+    } catch (err) {
+      showToast('Error al cargar detalles: ' + err.message, 'error');
+    }
+  }
+
+  function cerrarModalDetalle() {
+    document.getElementById('modal-detalle-backdrop').classList.remove('open');
+    document.getElementById('modal-detalle-doctor').classList.remove('open');
+  }
+
+  function editarDesdeDetalle() {
+    if (!doctorDetalleActual) return;
+    cerrarModalDetalle();
+    setTimeout(() => abrirModalDoctor(doctorDetalleActual), 150);
+  }
+
+  // ── Modal Crear / Editar ─────────────────────────────────────────────
+  function abrirModalDoctor(doctor = null) {
+    document.getElementById('modal-doctor-backdrop').classList.add('open');
+    document.getElementById('modal-doctor').classList.add('open');
+    document.getElementById('modal-doctor-alert').innerHTML = '';
+
+    const campoEsp = document.getElementById('campo-especialidad');
+    const campoEstado = document.getElementById('campo-estado');
+
+    if (doctor) {
+      document.getElementById('modal-doctor-titulo').textContent = 'Editar Doctor';
+      document.getElementById('doctor-id').value = doctor.id;
+      document.getElementById('doctor-nombre').value = doctor.name || '';
+      document.getElementById('doctor-email').value = doctor.email || '';
+      document.getElementById('doctor-telefono').value = doctor.phone || '';
+      campoEsp.style.display = 'none';
+      campoEstado.style.display = 'block';
+      document.getElementById('doctor-activo-si').checked = (doctor.active !== false);
+      document.getElementById('doctor-activo-no').checked = (doctor.active === false);
+    } else {
+      document.getElementById('modal-doctor-titulo').textContent = 'Nuevo Doctor';
+      document.getElementById('doctor-id').value = '';
+      document.getElementById('doctor-nombre').value = '';
+      document.getElementById('doctor-email').value = '';
+      document.getElementById('doctor-telefono').value = '';
+      document.getElementById('doctor-especialidad').value = '';
+      document.getElementById('doctor-especialidad-desc').value = '';
+      campoEsp.style.display = 'block';
+      campoEstado.style.display = 'none';
+    }
+  }
+
+  function cerrarModalDoctor() {
+    document.getElementById('modal-doctor-backdrop').classList.remove('open');
+    document.getElementById('modal-doctor').classList.remove('open');
+  }
+
+  async function guardarDoctor() {
+    const alertEl = document.getElementById('modal-doctor-alert');
+    const btn = document.getElementById('btn-guardar-doctor');
+    const id = document.getElementById('doctor-id').value;
+    const name = document.getElementById('doctor-nombre').value.trim();
+    const email = document.getElementById('doctor-email').value.trim() || null;
+    const phone = document.getElementById('doctor-telefono').value.trim() || null;
+
+    if (!name) {
+      alertEl.innerHTML = '<div class="alert alert--error">El nombre del doctor es requerido.</div>';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    try {
+      if (id) {
+        const activeVal = document.querySelector('input[name="doctor-activo"]:checked');
+        const body = { name, email, phone, active: activeVal ? activeVal.value === 'true' : true };
+        await apiFetch(`/api/v1/doctors/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+        showToast('Doctor actualizado correctamente', 'success');
+      } else {
+        const specialty_name = document.getElementById('doctor-especialidad').value.trim();
+        const specialty_description = document.getElementById('doctor-especialidad-desc').value.trim() || null;
+        if (!specialty_name) {
+          alertEl.innerHTML = '<div class="alert alert--error">La especialidad es requerida.</div>';
+          btn.disabled = false;
+          btn.textContent = 'Guardar';
+          return;
+        }
+        const body = { name, email, phone, specialty_name, specialty_description };
+        await apiFetch('/api/v1/doctors/', { method: 'POST', body: JSON.stringify(body) });
+        showToast('Doctor registrado correctamente', 'success');
+      }
+      cerrarModalDoctor();
+      await cargarDoctores();
+    } catch (err) {
+      alertEl.innerHTML = `<div class="alert alert--error">${err.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:white;fill:none;stroke-width:2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar`;
+    }
+  }
+
+  // ── Modal Desactivar ─────────────────────────────────────────────────
+  function abrirModalDeact(id, nombre) {
+    doctorADesactivarId = id;
+    document.getElementById('deact-nombre').textContent = nombre;
+    document.getElementById('modal-deact-backdrop').style.display = 'block';
+    document.getElementById('modal-deact').style.display = 'block';
+  }
+
+  function cerrarModalDeact() {
+    doctorADesactivarId = null;
+    document.getElementById('modal-deact-backdrop').style.display = 'none';
+    document.getElementById('modal-deact').style.display = 'none';
+  }
+
+  async function confirmarDesactivar() {
+    if (!doctorADesactivarId) return;
+    const btn = document.getElementById('btn-confirmar-deact');
+    btn.disabled = true;
+    btn.textContent = 'Desactivando...';
+    try {
+      await apiFetch(`/api/v1/doctors/${doctorADesactivarId}`, { method: 'DELETE' });
+      showToast('Doctor desactivado', 'success');
+      cerrarModalDeact();
+      await cargarDoctores();
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Desactivar';
+    }
+  }
+
+  document.getElementById('modal-deact-backdrop').addEventListener('click', cerrarModalDeact);
+
+  // ── Carga inicial ────────────────────────────────────────────────────
+  async function cargarDoctores() {
+    try {
+      // Traer todos (activos e inactivos) para el CRUD
+      const activos = await apiFetch('/api/v1/doctors/?active_only=false');
+      allDoctors = activos;
+      renderDoctors(allDoctors);
+    } catch (err) {
+      document.getElementById('doctor-grid').innerHTML =
+        `<div class="empty-state" style="grid-column:1/-1;"><p>Error al cargar doctores</p></div>`;
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', async () => {
     if (!requireAuth()) return;
-    const grid = document.getElementById('doctor-grid');
-    try {
-      const doctors = await apiFetch('/api/v1/doctors/');
-      if (!doctors.length) {
-        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
-          <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <p>No hay doctores registrados</p>
-        </div>`;
-        return;
-      }
-      grid.innerHTML = doctors.map(d => {
-        const initials = (d.name || 'D').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
-        return `
-        <div class="entity-card">
-          <div class="entity-card__header">
-            <div class="entity-card__avatar">${initials}</div>
-            <div>
-              <div class="entity-card__name">Dr. ${d.name}</div>
-              <div class="entity-card__sub">${d.specialty ? d.specialty.name : 'Sin especialidad'}</div>
-            </div>
-          </div>
-          <div class="entity-card__details">
-            ${d.email ? `<div class="entity-card__detail"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${d.email}</div>` : ''}
-            ${d.phone ? `<div class="entity-card__detail"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13 19.79 19.79 0 0 1 1.61 4.18 2 2 0 0 1 3.59 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.18 6.18l.93-.93a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${d.phone}</div>` : ''}
-            <div class="entity-card__detail" style="margin-top:0.35rem;">
-              <span class="badge badge--${d.active !== false ? 'active' : 'inactive'}">${d.active !== false ? 'Activo' : 'Inactivo'}</span>
-            </div>
-          </div>
-        </div>`;
-      }).join('');
-    } catch (err) {
-      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><p>Error al cargar doctores</p></div>`;
-    }
+    await cargarDoctores();
   });
 </script>
 {% endblock %}

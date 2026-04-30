@@ -43,8 +43,18 @@ async function apiFetch(endpoint, options = {}) {
   }
 
   if (!resp.ok) {
+    // Intentar leer el detalle de error; si no hay cuerpo se usa mensaje genérico
     const body = await resp.json().catch(() => ({}));
     throw new Error(body.detail || `Error ${resp.status}`);
+  }
+
+  // 204 No Content y respuestas sin cuerpo no tienen JSON que parsear
+  if (resp.status === 204 || resp.headers.get('content-length') === '0') {
+    return null;
+  }
+  const contentType = resp.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    return null;
   }
 
   return resp.json();

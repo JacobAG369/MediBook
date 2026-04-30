@@ -2,7 +2,14 @@
 
 {% block title %}MediBook — Pacientes{% endblock %}
 {% block page_title %}Pacientes{% endblock %}
-{% block page_subtitle %}Registro de pacientes del sistema{% endblock %}
+{% block page_subtitle %}Registro y gestión de pacientes del sistema{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn--primary" id="btn-nuevo-paciente" onclick="abrirModalPaciente()">
+  <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:white;fill:none;stroke-width:2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  Nuevo Paciente
+</button>
+{% endblock %}
 
 {% block content %}
 <div class="card" style="padding:0;overflow:hidden;">
@@ -21,12 +28,85 @@
           <th>Email</th>
           <th>Teléfono</th>
           <th>Fecha de Nacimiento</th>
+          <th style="text-align:center;">Acciones</th>
         </tr>
       </thead>
       <tbody id="patients-table">
-        <tr><td colspan="5" class="text-muted" style="text-align:center;padding:2.5rem;">Cargando...</td></tr>
+        <tr><td colspan="6" class="text-muted" style="text-align:center;padding:2.5rem;">Cargando...</td></tr>
       </tbody>
     </table>
+  </div>
+</div>
+
+<!-- Backdrop Modal -->
+<div class="slideover-backdrop" id="modal-paciente-backdrop" onclick="cerrarModalPaciente()"></div>
+
+<!-- Modal Crear/Editar Paciente -->
+<div class="slideover" id="modal-paciente">
+  <div class="slideover__header">
+    <span class="slideover__title" id="modal-paciente-titulo">Nuevo Paciente</span>
+    <button class="slideover__close" onclick="cerrarModalPaciente()">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="slideover__body">
+    <div id="modal-paciente-alert"></div>
+    <input type="hidden" id="paciente-id">
+
+    <div class="form-group">
+      <label class="form-label" for="paciente-nombre">Nombre completo *</label>
+      <input class="form-input" type="text" id="paciente-nombre" placeholder="Ej. María García López" maxlength="150" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="paciente-email">Correo electrónico</label>
+      <input class="form-input" type="email" id="paciente-email" placeholder="correo@ejemplo.com">
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label" for="paciente-telefono">Teléfono</label>
+        <input class="form-input" type="text" id="paciente-telefono" placeholder="+52 55 1234 5678" maxlength="20">
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label" for="paciente-nacimiento">Fecha de nacimiento</label>
+        <input class="form-input" type="date" id="paciente-nacimiento">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="paciente-notas">Notas <span style="color:var(--color-text-muted);font-weight:400;">(opcional)</span></label>
+      <textarea class="form-input" id="paciente-notas" rows="3" placeholder="Observaciones, alergias, antecedentes..." maxlength="255"></textarea>
+    </div>
+  </div>
+  <div class="slideover__footer">
+    <button class="btn btn--ghost" onclick="cerrarModalPaciente()">Cancelar</button>
+    <button class="btn btn--primary" id="btn-guardar-paciente" onclick="guardarPaciente()">
+      <svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:white;fill:none;stroke-width:2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Guardar
+    </button>
+  </div>
+</div>
+
+<!-- Modal Confirmar Eliminación -->
+<div class="slideover-backdrop" id="modal-eliminar-backdrop" style="z-index:2100;"></div>
+<div id="modal-eliminar" style="
+  display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:2200;background:var(--color-surface);border:1px solid var(--color-border);
+  border-radius:var(--radius-lg);padding:2rem;width:min(420px,90vw);
+  box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+  <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+    <div style="width:40px;height:40px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px;stroke:#ef4444;fill:none;stroke-width:2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+    </div>
+    <div>
+      <div style="font-weight:600;color:var(--color-text-primary);">Eliminar paciente</div>
+      <div style="font-size:0.83rem;color:var(--color-text-muted);">Esta acción no se puede deshacer</div>
+    </div>
+  </div>
+  <p style="font-size:0.9rem;color:var(--color-text-secondary);margin-bottom:1.5rem;">
+    ¿Estás seguro de que deseas eliminar a <strong id="eliminar-nombre"></strong>?
+  </p>
+  <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+    <button class="btn btn--ghost" onclick="cerrarModalEliminar()">Cancelar</button>
+    <button class="btn btn--danger" id="btn-confirmar-eliminar" onclick="confirmarEliminar()">Eliminar</button>
   </div>
 </div>
 {% endblock %}
@@ -34,53 +114,172 @@
 {% block scripts %}
 <script>
   let allPatients = [];
+  let pacienteAEliminarId = null;
 
+  // ── Render ──────────────────────────────────────────────────────────
   function renderPatients(patients) {
     const tbody = document.getElementById('patients-table');
     if (!patients.length) {
-      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">
         <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <p>Sin pacientes registrados</p>
       </div></td></tr>`;
       return;
     }
     tbody.innerHTML = patients.map(p => {
-      const initials = (p.full_name || p.name || 'P').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
-      const name = p.full_name || p.name || `Paciente #${p.id}`;
+      const initials = (p.full_name || 'P').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+      const dob = p.date_of_birth ? new Date(p.date_of_birth + 'T00:00:00').toLocaleDateString('es-MX', {year:'numeric',month:'short',day:'numeric'}) : '—';
       return `
       <tr>
         <td style="color:var(--color-text-muted);font-size:0.78rem;">#${p.id}</td>
         <td>
           <div style="display:flex;align-items:center;gap:0.65rem;">
             <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:600;color:white;flex-shrink:0;">${initials}</div>
-            <span style="font-weight:500;color:var(--color-text-primary);">${name}</span>
+            <span style="font-weight:500;color:var(--color-text-primary);">${p.full_name}</span>
           </div>
         </td>
         <td>${p.email || '—'}</td>
         <td>${p.phone || '—'}</td>
-        <td>${p.date_of_birth ? formatDate(p.date_of_birth) : '—'}</td>
+        <td>${dob}</td>
+        <td style="text-align:center;">
+          <div style="display:flex;gap:0.4rem;justify-content:center;">
+            <button class="btn btn--ghost btn--sm" title="Editar" onclick="abrirModalPaciente(${JSON.stringify(p).replace(/"/g,'&quot;')})">
+              <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn btn--ghost btn--sm" title="Eliminar" style="color:#ef4444;" onclick="abrirModalEliminar(${p.id}, '${(p.full_name||'').replace(/'/g,"\\'")}')">
+              <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          </div>
+        </td>
       </tr>`;
     }).join('');
   }
 
+  // ── Filtro ───────────────────────────────────────────────────────────
   document.getElementById('filter-patient').addEventListener('input', function() {
     const q = this.value.toLowerCase();
     renderPatients(allPatients.filter(p =>
-      (p.full_name || p.name || '').toLowerCase().includes(q) ||
+      (p.full_name || '').toLowerCase().includes(q) ||
       (p.email || '').toLowerCase().includes(q) ||
       String(p.id).includes(q)
     ));
   });
 
-  document.addEventListener('DOMContentLoaded', async () => {
-    if (!requireAuth()) return;
+  // ── Modal Crear / Editar ─────────────────────────────────────────────
+  function abrirModalPaciente(paciente = null) {
+    document.getElementById('modal-paciente-backdrop').classList.add('open');
+    document.getElementById('modal-paciente').classList.add('open');
+    document.getElementById('modal-paciente-alert').innerHTML = '';
+
+    if (paciente) {
+      document.getElementById('modal-paciente-titulo').textContent = 'Editar Paciente';
+      document.getElementById('paciente-id').value = paciente.id;
+      document.getElementById('paciente-nombre').value = paciente.full_name || '';
+      document.getElementById('paciente-email').value = paciente.email || '';
+      document.getElementById('paciente-telefono').value = paciente.phone || '';
+      document.getElementById('paciente-nacimiento').value = paciente.date_of_birth || '';
+      document.getElementById('paciente-notas').value = paciente.notes || '';
+    } else {
+      document.getElementById('modal-paciente-titulo').textContent = 'Nuevo Paciente';
+      document.getElementById('paciente-id').value = '';
+      document.getElementById('paciente-nombre').value = '';
+      document.getElementById('paciente-email').value = '';
+      document.getElementById('paciente-telefono').value = '';
+      document.getElementById('paciente-nacimiento').value = '';
+      document.getElementById('paciente-notas').value = '';
+    }
+  }
+
+  function cerrarModalPaciente() {
+    document.getElementById('modal-paciente-backdrop').classList.remove('open');
+    document.getElementById('modal-paciente').classList.remove('open');
+  }
+
+  async function guardarPaciente() {
+    const alertEl = document.getElementById('modal-paciente-alert');
+    const btn = document.getElementById('btn-guardar-paciente');
+    const id = document.getElementById('paciente-id').value;
+    const full_name = document.getElementById('paciente-nombre').value.trim();
+    const email = document.getElementById('paciente-email').value.trim() || null;
+    const phone = document.getElementById('paciente-telefono').value.trim() || null;
+    const date_of_birth = document.getElementById('paciente-nacimiento').value || null;
+    const notes = document.getElementById('paciente-notas').value.trim() || null;
+
+    if (!full_name) {
+      alertEl.innerHTML = '<div class="alert alert--error">El nombre del paciente es requerido.</div>';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    const body = { full_name, email, phone, date_of_birth, notes };
+
+    try {
+      if (id) {
+        await apiFetch(`/api/v1/patients/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+        showToast('Paciente actualizado correctamente', 'success');
+      } else {
+        await apiFetch('/api/v1/patients/', { method: 'POST', body: JSON.stringify(body) });
+        showToast('Paciente registrado correctamente', 'success');
+      }
+      cerrarModalPaciente();
+      await cargarPacientes();
+    } catch (err) {
+      alertEl.innerHTML = `<div class="alert alert--error">${err.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:15px;height:15px;stroke:white;fill:none;stroke-width:2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar`;
+    }
+  }
+
+  // ── Modal Eliminar ───────────────────────────────────────────────────
+  function abrirModalEliminar(id, nombre) {
+    pacienteAEliminarId = id;
+    document.getElementById('eliminar-nombre').textContent = nombre;
+    document.getElementById('modal-eliminar-backdrop').style.display = 'block';
+    document.getElementById('modal-eliminar').style.display = 'block';
+  }
+
+  function cerrarModalEliminar() {
+    pacienteAEliminarId = null;
+    document.getElementById('modal-eliminar-backdrop').style.display = 'none';
+    document.getElementById('modal-eliminar').style.display = 'none';
+  }
+
+  async function confirmarEliminar() {
+    if (!pacienteAEliminarId) return;
+    const btn = document.getElementById('btn-confirmar-eliminar');
+    btn.disabled = true;
+    btn.textContent = 'Eliminando...';
+    try {
+      await apiFetch(`/api/v1/patients/${pacienteAEliminarId}`, { method: 'DELETE' });
+      showToast('Paciente eliminado', 'success');
+      cerrarModalEliminar();
+      await cargarPacientes();
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Eliminar';
+    }
+  }
+
+  document.getElementById('modal-eliminar-backdrop').addEventListener('click', cerrarModalEliminar);
+
+  // ── Carga inicial ────────────────────────────────────────────────────
+  async function cargarPacientes() {
     try {
       allPatients = await apiFetch('/api/v1/patients/');
       renderPatients(allPatients);
     } catch (err) {
       document.getElementById('patients-table').innerHTML =
-        `<tr><td colspan="5"><div class="empty-state"><p>Error al cargar pacientes</p></div></td></tr>`;
+        `<tr><td colspan="6"><div class="empty-state"><p>Error al cargar pacientes</p></div></td></tr>`;
     }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth()) return;
+    await cargarPacientes();
   });
 </script>
 {% endblock %}

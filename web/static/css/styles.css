@@ -496,6 +496,8 @@ select.form-input {
   .form-row { grid-template-columns: 1fr; }
   .login-left { display: none; }
   .login-right { width: 100%; }
+  /* Gráficas dashboard en mobile */
+  .charts-row-2, .charts-row-1 { grid-template-columns: 1fr !important; }
 }
 
 @media (max-width: 480px) {

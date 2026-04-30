@@ -4,6 +4,10 @@
 {% block page_title %}Dashboard{% endblock %}
 {% block page_subtitle %}Resumen general del sistema{% endblock %}
 
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <!-- Accesos rápidos -->
 <div class="quick-actions">
@@ -31,9 +35,9 @@
     <div class="kpi-card__icon">
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
     </div>
-    <div class="kpi-card__label">Citas Programadas</div>
+    <div class="kpi-card__label">Total Citas</div>
     <div class="kpi-card__value" id="kpi-appointments">—</div>
-    <div class="kpi-card__sub">Total en el sistema</div>
+    <div class="kpi-card__sub" id="kpi-appt-sub">En el sistema</div>
   </div>
   <div class="kpi-card kpi-card--green">
     <div class="kpi-card__icon">
@@ -59,6 +63,57 @@
     <div class="kpi-card__value" id="kpi-health" style="font-size:1.3rem;">—</div>
     <div class="kpi-card__sub">Servicios en línea</div>
   </div>
+</div>
+
+<!-- Gráficas - Fila 1 -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem;">
+
+  <!-- Gráfica: Citas por Estado (Donut) -->
+  <div class="card">
+    <div class="card__header">
+      <span class="card__title">Citas por Estado</span>
+      <span style="font-size:0.75rem;color:var(--color-text-muted);">Distribución actual</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;min-height:220px;">
+      <canvas id="chart-estados" style="max-height:220px;"></canvas>
+    </div>
+    <div id="legend-estados" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;margin-top:0.75rem;"></div>
+  </div>
+
+  <!-- Gráfica: Modalidad (Barras) -->
+  <div class="card">
+    <div class="card__header">
+      <span class="card__title">Citas por Modalidad</span>
+      <span style="font-size:0.75rem;color:var(--color-text-muted);">Presencial vs Online</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;min-height:220px;">
+      <canvas id="chart-modalidad" style="max-height:220px;"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- Gráfica - Fila 2 -->
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:1.25rem;margin-bottom:1.25rem;">
+
+  <!-- Gráfica: Citas por mes (Línea) -->
+  <div class="card">
+    <div class="card__header">
+      <span class="card__title">Citas en los últimos 6 meses</span>
+      <span style="font-size:0.75rem;color:var(--color-text-muted);">Tendencia temporal</span>
+    </div>
+    <canvas id="chart-tendencia" style="max-height:240px;"></canvas>
+  </div>
+
+  <!-- Gráfica: Top doctores (Barras horizontales) -->
+  <div class="card">
+    <div class="card__header">
+      <span class="card__title">Top Doctores</span>
+      <span style="font-size:0.75rem;color:var(--color-text-muted);">Por citas atendidas</span>
+    </div>
+    <canvas id="chart-doctores" style="max-height:240px;"></canvas>
+  </div>
+
 </div>
 
 <!-- Últimas Citas -->
@@ -94,32 +149,207 @@
 
     Promise.all([
       apiFetch('/api/v1/appointments/').catch(() => []),
-      apiFetch('/api/v1/doctors/').catch(() => []),
+      apiFetch('/api/v1/doctors/?active_only=false').catch(() => []),
       apiFetch('/api/v1/patients/').catch(() => []),
       fetch('/api/v1/health').then(r => r.json()).catch(() => ({ status: 'unknown' })),
     ]).then(([appointments, doctors, patients, health]) => {
+
+      // ── KPIs ──────────────────────────────────────────────────────
+      const activas = appointments.filter(a => a.status !== 'CANCELLED').length;
       document.getElementById('kpi-appointments').textContent = appointments.length;
+      document.getElementById('kpi-appt-sub').textContent =
+        `${activas} activa${activas !== 1 ? 's' : ''}, ${appointments.length - activas} cancelada${appointments.length - activas !== 1 ? 's' : ''}`;
       document.getElementById('kpi-doctors').textContent = doctors.filter(d => d.active !== false).length;
       document.getElementById('kpi-patients').textContent = patients.length;
       document.getElementById('kpi-health').textContent =
         health.status === 'healthy' ? '✓ Operativo' : '⚠ Revisión';
 
+      // ── Mapas de nombres ──────────────────────────────────────────
+      const patMap = Object.fromEntries(patients.map(p => [p.id, p.full_name || `Paciente #${p.id}`]));
+      const docMap = Object.fromEntries(doctors.map(d => [d.id, `Dr. ${d.name}`]));
+
+      // ── Tabla de últimas citas ─────────────────────────────────────
       const tbody = document.getElementById('recent-appointments');
       if (!appointments.length) {
         tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><p>Sin citas registradas</p></td></tr>`;
-        return;
+      } else {
+        const recent = [...appointments].reverse().slice(0, 8);
+        tbody.innerHTML = recent.map(a => `
+          <tr>
+            <td style="color:var(--color-text-muted);font-size:0.78rem;">#${a.id}</td>
+            <td>${patMap[a.patient_id] || 'Paciente #' + a.patient_id}</td>
+            <td>${docMap[a.doctor_id] || 'Doctor #' + a.doctor_id}</td>
+            <td>${formatDate(a.start_time)}</td>
+            <td><span class="badge badge--${(a.status||'scheduled').toLowerCase()}">${a.status}</span></td>
+            <td>${a.meeting_link ? '<span class="badge badge--confirmed">Online</span>' : 'Presencial'}</td>
+          </tr>
+        `).join('');
       }
-      const recent = appointments.slice(-8).reverse();
-      tbody.innerHTML = recent.map(a => `
-        <tr>
-          <td style="color:var(--color-text-muted);font-size:0.78rem;">#${a.id}</td>
-          <td>Paciente #${a.patient_id}</td>
-          <td>Doctor #${a.doctor_id}</td>
-          <td>${formatDate(a.start_time)}</td>
-          <td><span class="badge badge--${(a.status||'scheduled').toLowerCase()}">${a.status}</span></td>
-          <td>${a.meeting_link ? '<span class="badge badge--confirmed">Online</span>' : 'Presencial'}</td>
-        </tr>
-      `).join('');
+
+      // ══════════════════════════════════════════════════════════════
+      // GRÁFICAS
+      // ══════════════════════════════════════════════════════════════
+
+      // Paleta
+      const COLORS = {
+        SCHEDULED: '#6366f1',
+        CONFIRMED: '#10b981',
+        COMPLETED: '#64748b',
+        CANCELLED: '#ef4444',
+        FOLLOW_UP: '#f59e0b',
+        URGENT:    '#dc2626',
+      };
+      const LABELS_ES = {
+        SCHEDULED: 'Programada',
+        CONFIRMED:  'Confirmada',
+        COMPLETED:  'Completada',
+        CANCELLED:  'Cancelada',
+        FOLLOW_UP:  'Seguimiento',
+        URGENT:     'Urgente',
+      };
+
+      // ── 1. Citas por Estado (Donut) ────────────────────────────────
+      const estadoCount = {};
+      appointments.forEach(a => {
+        estadoCount[a.status] = (estadoCount[a.status] || 0) + 1;
+      });
+      const estadoLabels  = Object.keys(estadoCount);
+      const estadoData    = Object.values(estadoCount);
+      const estadoColors  = estadoLabels.map(k => COLORS[k] || '#94a3b8');
+
+      new Chart(document.getElementById('chart-estados'), {
+        type: 'doughnut',
+        data: {
+          labels: estadoLabels.map(k => LABELS_ES[k] || k),
+          datasets: [{ data: estadoData, backgroundColor: estadoColors, borderWidth: 2, borderColor: '#ffffff', hoverOffset: 6 }],
+        },
+        options: {
+          cutout: '68%',
+          plugins: { legend: { display: false }, tooltip: { callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.parsed} (${Math.round(ctx.parsed / estadoData.reduce((a,b)=>a+b,0) * 100)}%)`
+          }}},
+          animation: { animateScale: true },
+        },
+      });
+
+      // Leyenda personalizada
+      const legendEl = document.getElementById('legend-estados');
+      estadoLabels.forEach((k, i) => {
+        legendEl.innerHTML += `<span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.73rem;color:var(--color-text-secondary);">
+          <span style="width:10px;height:10px;border-radius:50%;background:${estadoColors[i]};flex-shrink:0;display:inline-block;"></span>
+          ${LABELS_ES[k] || k} (${estadoData[i]})
+        </span>`;
+      });
+
+      // ── 2. Modalidad: Presencial vs Online (Barras verticales) ─────
+      const presencial = appointments.filter(a => !a.meeting_link).length;
+      const online     = appointments.filter(a =>  a.meeting_link).length;
+
+      new Chart(document.getElementById('chart-modalidad'), {
+        type: 'bar',
+        data: {
+          labels: ['Presencial', 'Online / Teleconsulta'],
+          datasets: [{
+            label: 'Citas',
+            data: [presencial, online],
+            backgroundColor: ['rgba(99,102,241,0.75)', 'rgba(14,165,233,0.75)'],
+            borderColor:     ['#6366f1', '#0ea5e9'],
+            borderWidth: 1.5,
+            borderRadius: 6,
+          }],
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1, color: '#94a3b8', font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+            x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { display: false } },
+          },
+        },
+      });
+
+      // ── 3. Tendencia mensual (Línea — últimos 6 meses) ─────────────
+      const ahora = new Date();
+      const meses = [];
+      const mesesLabels = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+        meses.push({ year: d.getFullYear(), month: d.getMonth() });
+        mesesLabels.push(d.toLocaleDateString('es-MX', { month: 'short', year: '2-digit' }));
+      }
+      const citasPorMes = meses.map(({ year, month }) =>
+        appointments.filter(a => {
+          const d = new Date(a.start_time);
+          return d.getFullYear() === year && d.getMonth() === month;
+        }).length
+      );
+
+      new Chart(document.getElementById('chart-tendencia'), {
+        type: 'line',
+        data: {
+          labels: mesesLabels,
+          datasets: [{
+            label: 'Citas',
+            data: citasPorMes,
+            borderColor: '#0ea5e9',
+            backgroundColor: 'rgba(14,165,233,0.08)',
+            tension: 0.35,
+            fill: true,
+            pointBackgroundColor: '#0ea5e9',
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            borderWidth: 2,
+          }],
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1, color: '#94a3b8', font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+            x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { display: false } },
+          },
+        },
+      });
+
+      // ── 4. Top doctores (Barras horizontales) ─────────────────────
+      const citasPorDoc = {};
+      appointments.forEach(a => {
+        const nombre = docMap[a.doctor_id] || `Doctor #${a.doctor_id}`;
+        citasPorDoc[nombre] = (citasPorDoc[nombre] || 0) + 1;
+      });
+      const topDocs = Object.entries(citasPorDoc)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      if (topDocs.length) {
+        new Chart(document.getElementById('chart-doctores'), {
+          type: 'bar',
+          data: {
+            labels: topDocs.map(([n]) => n.replace('Dr. ', '')),
+            datasets: [{
+              label: 'Citas',
+              data: topDocs.map(([, v]) => v),
+              backgroundColor: [
+                'rgba(99,102,241,0.75)', 'rgba(16,185,129,0.75)',
+                'rgba(14,165,233,0.75)', 'rgba(245,158,11,0.75)',
+                'rgba(239,68,68,0.75)',
+              ],
+              borderRadius: 5,
+              borderWidth: 0,
+            }],
+          },
+          options: {
+            indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { beginAtZero: true, ticks: { stepSize: 1, color: '#94a3b8', font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+              y: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { display: false } },
+            },
+          },
+        });
+      } else {
+        document.getElementById('chart-doctores').parentElement.innerHTML =
+          `<div class="empty-state" style="min-height:180px;"><p>Sin datos de doctores</p></div>`;
+      }
+
     });
   });
 </script>
