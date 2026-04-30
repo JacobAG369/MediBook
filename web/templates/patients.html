@@ -1,28 +1,30 @@
 {% extends "base.html" %}
 
 {% block title %}MediBook — Pacientes{% endblock %}
-
 {% block page_title %}Pacientes{% endblock %}
 {% block page_subtitle %}Registro de pacientes del sistema{% endblock %}
 
 {% block content %}
-<div class="card">
-  <div class="card__header">
-    <h3 class="card__title">Todos los Pacientes</h3>
+<div class="card" style="padding:0;overflow:hidden;">
+  <div class="card__header" style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--color-border);">
+    <span class="card__title">Directorio de Pacientes</span>
+    <div style="display:flex;gap:0.75rem;align-items:center;">
+      <input class="form-input" type="text" id="filter-patient" placeholder="Buscar paciente..." style="width:220px;margin:0;">
+    </div>
   </div>
-  <div class="table-wrapper" style="border:none; background:transparent; backdrop-filter:none;">
+  <div class="table-wrapper" style="border:none;box-shadow:none;">
     <table>
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Nombre Completo</th>
+          <th>#</th>
+          <th>Paciente</th>
           <th>Email</th>
-          <th>Telefono</th>
+          <th>Teléfono</th>
           <th>Fecha de Nacimiento</th>
         </tr>
       </thead>
       <tbody id="patients-table">
-        <tr><td colspan="5" class="text-muted" style="text-align:center; padding:2rem;">Cargando...</td></tr>
+        <tr><td colspan="5" class="text-muted" style="text-align:center;padding:2.5rem;">Cargando...</td></tr>
       </tbody>
     </table>
   </div>
@@ -31,30 +33,53 @@
 
 {% block scripts %}
 <script>
+  let allPatients = [];
+
+  function renderPatients(patients) {
+    const tbody = document.getElementById('patients-table');
+    if (!patients.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <p>Sin pacientes registrados</p>
+      </div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = patients.map(p => {
+      const initials = (p.full_name || p.name || 'P').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+      const name = p.full_name || p.name || `Paciente #${p.id}`;
+      return `
+      <tr>
+        <td style="color:var(--color-text-muted);font-size:0.78rem;">#${p.id}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:0.65rem;">
+            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:600;color:white;flex-shrink:0;">${initials}</div>
+            <span style="font-weight:500;color:var(--color-text-primary);">${name}</span>
+          </div>
+        </td>
+        <td>${p.email || '—'}</td>
+        <td>${p.phone || '—'}</td>
+        <td>${p.date_of_birth ? formatDate(p.date_of_birth) : '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  document.getElementById('filter-patient').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    renderPatients(allPatients.filter(p =>
+      (p.full_name || p.name || '').toLowerCase().includes(q) ||
+      (p.email || '').toLowerCase().includes(q) ||
+      String(p.id).includes(q)
+    ));
+  });
+
   document.addEventListener('DOMContentLoaded', async () => {
     if (!requireAuth()) return;
-
     try {
-      const patients = await apiFetch('/api/v1/patients/');
-      const tbody = document.getElementById('patients-table');
-
-      if (patients.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Sin pacientes registrados</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = patients.map(p => `
-        <tr>
-          <td>${p.id}</td>
-          <td style="color: var(--color-text-primary); font-weight: 500;">${p.full_name}</td>
-          <td>${p.email || '—'}</td>
-          <td>${p.phone || '—'}</td>
-          <td>${p.date_of_birth ? formatDate(p.date_of_birth) : '—'}</td>
-        </tr>
-      `).join('');
-
+      allPatients = await apiFetch('/api/v1/patients/');
+      renderPatients(allPatients);
     } catch (err) {
-      console.error('Error loading patients:', err);
+      document.getElementById('patients-table').innerHTML =
+        `<tr><td colspan="5"><div class="empty-state"><p>Error al cargar pacientes</p></div></td></tr>`;
     }
   });
 </script>

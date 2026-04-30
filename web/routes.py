@@ -17,8 +17,9 @@ router = APIRouter(tags=["Web"], include_in_schema=False)
 
 @router.get("/", response_class=HTMLResponse)
 async def landing(request: Request):
-    """Landing page del sistema."""
-    return templates.TemplateResponse("landing.html", {"request": request})
+    """Redirige al login."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/web/login")
 
 
 @router.get("/web/login", response_class=HTMLResponse)

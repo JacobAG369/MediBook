@@ -1,37 +1,80 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MediBook — Iniciar sesion</title>
+  <title>MediBook — Iniciar sesión</title>
+  <meta name="description" content="Accede al sistema de gestión de citas médicas MediBook">
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
+
 <body>
   <div class="login-page">
-    <div class="login-card">
-      <h2 class="login-card__title">MediBook</h2>
-      <p class="login-card__subtitle">Ingresa tus credenciales para continuar</p>
-
-      <div id="login-alert"></div>
-
-      <form id="login-form">
-        <div class="form-group">
-          <label class="form-label" for="username">Usuario</label>
-          <input class="form-input" type="text" id="username" name="username"
-                 placeholder="nombre.usuario" autocomplete="username" required>
+    <!-- Panel izquierdo decorativo -->
+    <div class="login-left">
+      <div class="login-left-content">
+        <div class="login-left-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
         </div>
-        <div class="form-group">
-          <label class="form-label" for="password">Contrasena</label>
-          <input class="form-input" type="password" id="password" name="password"
-                 placeholder="Tu contrasena" autocomplete="current-password" required>
+        <h2>MediBook</h2>
+        <p>Sistema profesional de gestión de citas médicas. Simplifica tu clínica, mejora la atención.</p>
+        <div class="login-features">
+          <div class="login-feature">
+            <div class="login-feature-dot"></div>
+            <span>Gestión de citas en tiempo real</span>
+          </div>
+          <div class="login-feature">
+            <div class="login-feature-dot"></div>
+            <span>Directorio de doctores y especialidades</span>
+          </div>
+          <div class="login-feature">
+            <div class="login-feature-dot"></div>
+            <span>Historial completo de pacientes</span>
+          </div>
+          <div class="login-feature">
+            <div class="login-feature-dot"></div>
+            <span>Teleconsulta y citas presenciales</span>
+          </div>
         </div>
-        <button type="submit" class="btn btn--primary" id="login-btn">
-          Iniciar sesion
-        </button>
-      </form>
+      </div>
+    </div>
 
-      <div class="login-card__footer">
-        <a href="/">Volver al inicio</a>
+    <!-- Panel derecho: formulario -->
+    <div class="login-right">
+      <div class="login-form-container">
+        <h1>Bienvenido</h1>
+        <p class="subtitle">Ingresa tus credenciales para acceder al sistema</p>
+
+        <div id="login-alert"></div>
+
+        <form id="login-form">
+          <div class="form-group">
+            <label class="form-label" for="username">Usuario</label>
+            <input class="form-input" type="text" id="username" name="username" placeholder="nombre.usuario"
+              autocomplete="username" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="password">Contraseña</label>
+            <input class="form-input" type="password" id="password" name="password" placeholder="••••••••"
+              autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="btn btn--primary" id="login-btn">
+            <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:white;fill:none;stroke-width:2;flex-shrink:0">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+              <polyline points="10 17 15 12 10 7" />
+              <line x1="15" y1="12" x2="3" y2="12" />
+            </svg>
+            Iniciar sesión
+          </button>
+        </form>
+
+        <div class="login-footer">
+          <a style="font-size:0.75rem;color:var(--color-text-muted)">¿Problemas para acceder? Contacta al
+            administrador</a>
+        </div>
       </div>
     </div>
   </div>
@@ -41,14 +84,19 @@
     const alertBox = document.getElementById('login-alert');
     const loginBtn = document.getElementById('login-btn');
 
+    // Si ya está autenticado, redirigir
+    if (localStorage.getItem('medibook_token')) {
+      window.location.href = '/web/dashboard';
+    }
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       alertBox.innerHTML = '';
-      loginBtn.textContent = 'Autenticando...';
       loginBtn.disabled = true;
+      loginBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:white;fill:none;stroke-width:2;animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Autenticando...`;
 
       const formData = new URLSearchParams();
-      formData.append('username', document.getElementById('username').value);
+      formData.append('username', document.getElementById('username').value.trim());
       formData.append('password', document.getElementById('password').value);
 
       try {
@@ -66,7 +114,7 @@
         const data = await resp.json();
         localStorage.setItem('medibook_token', data.access_token);
 
-        // Fetch user info to store
+        // Obtener información del usuario
         const meResp = await fetch('/api/v1/auth/me', {
           headers: { 'Authorization': `Bearer ${data.access_token}` },
         });
@@ -79,15 +127,22 @@
 
       } catch (err) {
         alertBox.innerHTML = `<div class="alert alert--error">${err.message}</div>`;
-        loginBtn.textContent = 'Iniciar sesion';
         loginBtn.disabled = false;
+        loginBtn.innerHTML = `<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:white;fill:none;stroke-width:2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Iniciar sesión`;
       }
     });
-
-    // If already logged in, redirect
-    if (localStorage.getItem('medibook_token')) {
-      window.location.href = '/web/dashboard';
-    }
   </script>
+  <style>
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
 </body>
+
 </html>

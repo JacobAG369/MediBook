@@ -1,54 +1,86 @@
 {% extends "base.html" %}
 
 {% block title %}MediBook — Dashboard{% endblock %}
-
 {% block page_title %}Dashboard{% endblock %}
 {% block page_subtitle %}Resumen general del sistema{% endblock %}
 
 {% block content %}
+<!-- Accesos rápidos -->
+<div class="quick-actions">
+  <a href="/web/appointments" class="quick-action" id="qa-new-appt">
+    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Nueva Cita
+  </a>
+  <a href="/web/patients" class="quick-action" id="qa-new-patient">
+    <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+    Nuevo Paciente
+  </a>
+  <a href="/web/doctors" class="quick-action" id="qa-doctors">
+    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    Ver Doctores
+  </a>
+  <a href="/web/appointments" class="quick-action" id="qa-today">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Citas de Hoy
+  </a>
+</div>
+
 <!-- KPIs -->
 <div class="kpi-grid" id="kpi-grid">
-  <div class="kpi-card">
+  <div class="kpi-card kpi-card--blue">
+    <div class="kpi-card__icon">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    </div>
     <div class="kpi-card__label">Citas Programadas</div>
-    <div class="kpi-card__value" id="kpi-appointments">--</div>
+    <div class="kpi-card__value" id="kpi-appointments">—</div>
     <div class="kpi-card__sub">Total en el sistema</div>
   </div>
-  <div class="kpi-card">
+  <div class="kpi-card kpi-card--green">
+    <div class="kpi-card__icon">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </div>
     <div class="kpi-card__label">Doctores Activos</div>
-    <div class="kpi-card__value" id="kpi-doctors">--</div>
+    <div class="kpi-card__value" id="kpi-doctors">—</div>
     <div class="kpi-card__sub">Disponibles para consulta</div>
   </div>
-  <div class="kpi-card">
+  <div class="kpi-card kpi-card--purple">
+    <div class="kpi-card__icon">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    </div>
     <div class="kpi-card__label">Pacientes Registrados</div>
-    <div class="kpi-card__value" id="kpi-patients">--</div>
+    <div class="kpi-card__value" id="kpi-patients">—</div>
     <div class="kpi-card__sub">En la base de datos</div>
   </div>
-  <div class="kpi-card">
+  <div class="kpi-card kpi-card--orange">
+    <div class="kpi-card__icon">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    </div>
     <div class="kpi-card__label">Estado del Sistema</div>
-    <div class="kpi-card__value" id="kpi-health" style="font-size:1.4rem;">--</div>
-    <div class="kpi-card__sub">API y base de datos</div>
+    <div class="kpi-card__value" id="kpi-health" style="font-size:1.3rem;">—</div>
+    <div class="kpi-card__sub">Servicios en línea</div>
   </div>
 </div>
 
-<!-- Recent Appointments -->
+<!-- Últimas Citas -->
 <div class="card">
   <div class="card__header">
-    <h3 class="card__title">Ultimas Citas</h3>
+    <span class="card__title">Últimas Citas</span>
     <a href="/web/appointments" class="btn btn--ghost btn--sm">Ver todas</a>
   </div>
-  <div class="table-wrapper" style="border:none; background:transparent; backdrop-filter:none;">
+  <div class="table-wrapper" style="border:none;box-shadow:none;">
     <table>
       <thead>
         <tr>
-          <th>ID</th>
+          <th>#</th>
           <th>Paciente</th>
           <th>Doctor</th>
-          <th>Fecha</th>
+          <th>Fecha y Hora</th>
           <th>Estado</th>
+          <th>Tipo</th>
         </tr>
       </thead>
       <tbody id="recent-appointments">
-        <tr><td colspan="5" class="text-muted" style="text-align:center; padding:2rem;">Cargando...</td></tr>
+        <tr><td colspan="6" class="text-muted" style="text-align:center;padding:2rem;">Cargando...</td></tr>
       </tbody>
     </table>
   </div>
@@ -58,42 +90,36 @@
 {% block scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    const token = localStorage.getItem('medibook_token');
-    if (!token) { window.location.href = '/web/login'; return; }
+    if (!requireAuth()) return;
 
-    const headers = { 'Authorization': `Bearer ${token}` };
-
-    // Load KPIs
     Promise.all([
-      apiFetch('/api/v1/appointments/'),
-      apiFetch('/api/v1/doctors/'),
-      apiFetch('/api/v1/patients/'),
-      fetch('/api/v1/health').then(r => r.json()),
+      apiFetch('/api/v1/appointments/').catch(() => []),
+      apiFetch('/api/v1/doctors/').catch(() => []),
+      apiFetch('/api/v1/patients/').catch(() => []),
+      fetch('/api/v1/health').then(r => r.json()).catch(() => ({ status: 'unknown' })),
     ]).then(([appointments, doctors, patients, health]) => {
       document.getElementById('kpi-appointments').textContent = appointments.length;
-      document.getElementById('kpi-doctors').textContent = doctors.length;
+      document.getElementById('kpi-doctors').textContent = doctors.filter(d => d.active !== false).length;
       document.getElementById('kpi-patients').textContent = patients.length;
       document.getElementById('kpi-health').textContent =
-        health.status === 'healthy' ? 'Operativo' : 'Con problemas';
+        health.status === 'healthy' ? '✓ Operativo' : '⚠ Revisión';
 
-      // Recent appointments
       const tbody = document.getElementById('recent-appointments');
-      if (appointments.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Sin citas registradas</td></tr>';
+      if (!appointments.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><p>Sin citas registradas</p></td></tr>`;
         return;
       }
-      const recent = appointments.slice(0, 8);
+      const recent = appointments.slice(-8).reverse();
       tbody.innerHTML = recent.map(a => `
         <tr>
-          <td>${a.id}</td>
+          <td style="color:var(--color-text-muted);font-size:0.78rem;">#${a.id}</td>
           <td>Paciente #${a.patient_id}</td>
           <td>Doctor #${a.doctor_id}</td>
           <td>${formatDate(a.start_time)}</td>
-          <td><span class="badge badge--${a.status.toLowerCase()}">${a.status}</span></td>
+          <td><span class="badge badge--${(a.status||'scheduled').toLowerCase()}">${a.status}</span></td>
+          <td>${a.meeting_link ? '<span class="badge badge--confirmed">Online</span>' : 'Presencial'}</td>
         </tr>
       `).join('');
-    }).catch(err => {
-      console.error('Dashboard error:', err);
     });
   });
 </script>
