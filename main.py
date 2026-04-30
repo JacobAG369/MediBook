@@ -1,68 +1,70 @@
 # medibook/main.py
 """
-Entry point de la aplicación MediBook.
+Entry point de la aplicacion MediBook.
 
-Configura la instancia de FastAPI, monta los routers
-y define los metadatos de la documentación.
+Configura la instancia de FastAPI, monta los routers,
+sirve archivos estaticos y define los metadatos de la documentacion.
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from medibook.config.logging_config import setup_logging
 from medibook.api.middleware import RequestLoggingMiddleware
 
 from medibook.api.routes import appointments, doctors, health, patients
 from medibook.api.routes import auth
+from medibook.web.routes import router as web_router
 
 # ---------- Metadata de la API ----------
 
 DESCRIPTION = """
-## 🏥 MediBook API
+## MediBook API
 
-Sistema de gestión de citas médicas construido con patrones de diseño GoF
+Sistema de gestion de citas medicas construido con patrones de diseno GoF
 y principios SOLID.
 
-### Patrones de Diseño Integrados
+### Patrones de Diseno Integrados
 
-| Patrón | Uso en la API |
+| Patron | Uso en la API |
 |---|---|
 | **Factory Method** | `POST /appointments` — selecciona el workflow |
-| **Template Method** | Flujo de creación de citas paso a paso |
-| **Observer** | Notificaciones automáticas al crear citas |
+| **Template Method** | Flujo de creacion de citas paso a paso |
+| **Observer** | Notificaciones automaticas al crear citas |
 | **Prototype** | `POST /appointments/{id}/clone` — clona citas |
-| **Decorator** | `GET /appointments/{id}/summary` — resumen dinámico |
+| **Decorator** | `GET /appointments/{id}/summary` — resumen dinamico |
 | **Flyweight** | `POST /doctors` — reutiliza especialidades existentes |
-| **Singleton** | Configuración global de la clínica |
+| **Singleton** | Configuracion global de la clinica |
 
 ### Seguridad
 
-- 🔐 Autenticación JWT (Bearer Token)
-- 🛡️ RBAC con roles: ADMIN, DOCTOR, RECEPTIONIST, PATIENT
-- 🔑 Hash bcrypt para contraseñas
-- 📝 Usa el botón **Authorize** arriba para autenticarte
+- Autenticacion JWT (Bearer Token)
+- RBAC con roles: ADMIN, DOCTOR, RECEPTIONIST, PATIENT
+- Hash bcrypt para contrasenas
+- Usa el boton **Authorize** arriba para autenticarte
 """
 
 TAGS_METADATA = [
     {
-        "name": "Autenticación",
-        "description": "Registro, login y gestión de sesiones JWT.",
+        "name": "Autenticacion",
+        "description": "Registro, login y gestion de sesiones JWT.",
     },
     {
-        "name": "Citas Médicas",
-        "description": "Operaciones CRUD y patrones de diseño sobre citas.",
+        "name": "Citas Medicas",
+        "description": "Operaciones CRUD y patrones de diseno sobre citas.",
     },
     {
         "name": "Doctores",
-        "description": "Gestión de doctores y sus especialidades.",
+        "description": "Gestion de doctores y sus especialidades.",
     },
     {
         "name": "Pacientes",
-        "description": "Registro y gestión de pacientes.",
+        "description": "Registro y gestion de pacientes.",
     },
     {
         "name": "Health",
-        "description": "Verificación de salud del sistema.",
+        "description": "Verificacion de salud del sistema.",
     },
 ]
 
@@ -77,12 +79,16 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# ---------- Archivos Estaticos ----------
+
+app.mount("/static", StaticFiles(directory="medibook/web/static"), name="static")
+
 # ---------- Logging y Middleware ----------
 
 setup_logging(level="INFO")
 app.add_middleware(RequestLoggingMiddleware)
 
-# CORS — Permitir orígenes en desarrollo (restringir en producción)
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:8000"],
@@ -101,15 +107,5 @@ app.include_router(appointments.router, prefix=API_PREFIX)
 app.include_router(doctors.router, prefix=API_PREFIX)
 app.include_router(patients.router, prefix=API_PREFIX)
 
-
-# ---------- Root ----------
-
-@app.get("/", tags=["Root"], include_in_schema=False)
-def root():
-    """Redirige a la documentación de la API."""
-    return {
-        "app": "MediBook API",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "health": f"{API_PREFIX}/health",
-    }
+# Web frontend (debe ir al final para que "/" no bloquee las rutas API)
+app.include_router(web_router)

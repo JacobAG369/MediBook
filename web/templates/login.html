@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediBook — Iniciar sesion</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <h2 class="login-card__title">MediBook</h2>
+      <p class="login-card__subtitle">Ingresa tus credenciales para continuar</p>
+
+      <div id="login-alert"></div>
+
+      <form id="login-form">
+        <div class="form-group">
+          <label class="form-label" for="username">Usuario</label>
+          <input class="form-input" type="text" id="username" name="username"
+                 placeholder="nombre.usuario" autocomplete="username" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Contrasena</label>
+          <input class="form-input" type="password" id="password" name="password"
+                 placeholder="Tu contrasena" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn--primary" id="login-btn">
+          Iniciar sesion
+        </button>
+      </form>
+
+      <div class="login-card__footer">
+        <a href="/">Volver al inicio</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('login-form');
+    const alertBox = document.getElementById('login-alert');
+    const loginBtn = document.getElementById('login-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      alertBox.innerHTML = '';
+      loginBtn.textContent = 'Autenticando...';
+      loginBtn.disabled = true;
+
+      const formData = new URLSearchParams();
+      formData.append('username', document.getElementById('username').value);
+      formData.append('password', document.getElementById('password').value);
+
+      try {
+        const resp = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData,
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.detail || 'Credenciales incorrectas');
+        }
+
+        const data = await resp.json();
+        localStorage.setItem('medibook_token', data.access_token);
+
+        // Fetch user info to store
+        const meResp = await fetch('/api/v1/auth/me', {
+          headers: { 'Authorization': `Bearer ${data.access_token}` },
+        });
+        if (meResp.ok) {
+          const user = await meResp.json();
+          localStorage.setItem('medibook_user', JSON.stringify(user));
+        }
+
+        window.location.href = '/web/dashboard';
+
+      } catch (err) {
+        alertBox.innerHTML = `<div class="alert alert--error">${err.message}</div>`;
+        loginBtn.textContent = 'Iniciar sesion';
+        loginBtn.disabled = false;
+      }
+    });
+
+    // If already logged in, redirect
+    if (localStorage.getItem('medibook_token')) {
+      window.location.href = '/web/dashboard';
+    }
+  </script>
+</body>
+</html>

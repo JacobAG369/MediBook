@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}MediBook — Dashboard{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Resumen general del sistema{% endblock %}
+
+{% block content %}
+<!-- KPIs -->
+<div class="kpi-grid" id="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-card__label">Citas Programadas</div>
+    <div class="kpi-card__value" id="kpi-appointments">--</div>
+    <div class="kpi-card__sub">Total en el sistema</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__label">Doctores Activos</div>
+    <div class="kpi-card__value" id="kpi-doctors">--</div>
+    <div class="kpi-card__sub">Disponibles para consulta</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__label">Pacientes Registrados</div>
+    <div class="kpi-card__value" id="kpi-patients">--</div>
+    <div class="kpi-card__sub">En la base de datos</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card__label">Estado del Sistema</div>
+    <div class="kpi-card__value" id="kpi-health" style="font-size:1.4rem;">--</div>
+    <div class="kpi-card__sub">API y base de datos</div>
+  </div>
+</div>
+
+<!-- Recent Appointments -->
+<div class="card">
+  <div class="card__header">
+    <h3 class="card__title">Ultimas Citas</h3>
+    <a href="/web/appointments" class="btn btn--ghost btn--sm">Ver todas</a>
+  </div>
+  <div class="table-wrapper" style="border:none; background:transparent; backdrop-filter:none;">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Paciente</th>
+          <th>Doctor</th>
+          <th>Fecha</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="recent-appointments">
+        <tr><td colspan="5" class="text-muted" style="text-align:center; padding:2rem;">Cargando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const token = localStorage.getItem('medibook_token');
+    if (!token) { window.location.href = '/web/login'; return; }
+
+    const headers = { 'Authorization': `Bearer ${token}` };
+
+    // Load KPIs
+    Promise.all([
+      apiFetch('/api/v1/appointments/'),
+      apiFetch('/api/v1/doctors/'),
+      apiFetch('/api/v1/patients/'),
+      fetch('/api/v1/health').then(r => r.json()),
+    ]).then(([appointments, doctors, patients, health]) => {
+      document.getElementById('kpi-appointments').textContent = appointments.length;
+      document.getElementById('kpi-doctors').textContent = doctors.length;
+      document.getElementById('kpi-patients').textContent = patients.length;
+      document.getElementById('kpi-health').textContent =
+        health.status === 'healthy' ? 'Operativo' : 'Con problemas';
+
+      // Recent appointments
+      const tbody = document.getElementById('recent-appointments');
+      if (appointments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Sin citas registradas</td></tr>';
+        return;
+      }
+      const recent = appointments.slice(0, 8);
+      tbody.innerHTML = recent.map(a => `
+        <tr>
+          <td>${a.id}</td>
+          <td>Paciente #${a.patient_id}</td>
+          <td>Doctor #${a.doctor_id}</td>
+          <td>${formatDate(a.start_time)}</td>
+          <td><span class="badge badge--${a.status.toLowerCase()}">${a.status}</span></td>
+        </tr>
+      `).join('');
+    }).catch(err => {
+      console.error('Dashboard error:', err);
+    });
+  });
+</script>
+{% endblock %}

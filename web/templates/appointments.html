@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}MediBook — Citas Medicas{% endblock %}
+
+{% block page_title %}Citas Medicas{% endblock %}
+{% block page_subtitle %}Registro de citas del sistema{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card__header">
+    <h3 class="card__title">Todas las Citas</h3>
+  </div>
+  <div class="table-wrapper" style="border:none; background:transparent; backdrop-filter:none;">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Paciente</th>
+          <th>Doctor</th>
+          <th>Fecha y Hora</th>
+          <th>Duracion</th>
+          <th>Estado</th>
+          <th>Tipo</th>
+        </tr>
+      </thead>
+      <tbody id="appointments-table">
+        <tr><td colspan="7" class="text-muted" style="text-align:center; padding:2rem;">Cargando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth()) return;
+
+    try {
+      const appointments = await apiFetch('/api/v1/appointments/');
+      const tbody = document.getElementById('appointments-table');
+
+      if (appointments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Sin citas registradas</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = appointments.map(a => `
+        <tr>
+          <td>${a.id}</td>
+          <td>Paciente #${a.patient_id}</td>
+          <td>Doctor #${a.doctor_id}</td>
+          <td>${formatDate(a.start_time)}</td>
+          <td>${a.duration_minutes || 30} min</td>
+          <td><span class="badge badge--${a.status.toLowerCase()}">${a.status}</span></td>
+          <td>${a.meeting_link ? '<span class="text-accent">Online</span>' : 'Presencial'}</td>
+        </tr>
+      `).join('');
+
+    } catch (err) {
+      console.error('Error loading appointments:', err);
+    }
+  });
+</script>
+{% endblock %}

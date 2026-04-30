@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediBook — Medical Management</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+  <div class="landing">
+    <!-- Navigation -->
+    <nav class="landing__nav">
+      <div class="landing__logo">MediBook</div>
+      <div class="landing__nav-links">
+        <a href="/docs" class="landing__nav-link" target="_blank">API Reference</a>
+        <a href="/web/login" class="btn btn--ghost btn--sm">Iniciar sesion</a>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="landing__hero">
+      <div class="landing__hero-inner">
+        <h1>Sistema de gestion de citas medicas</h1>
+        <p>
+          Plataforma profesional construida con patrones de diseno GoF
+          y principios SOLID. Seguridad JWT, RBAC, y arquitectura
+          lista para produccion.
+        </p>
+        <div class="landing__actions">
+          <a href="/web/login" class="btn btn--primary">Acceder al sistema</a>
+          <a href="/docs" class="btn btn--ghost" target="_blank">Ver documentacion</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="landing__stats" id="landing-stats">
+      <div class="landing__stat">
+        <div class="landing__stat-value" id="stat-doctors">--</div>
+        <div class="landing__stat-label">Doctores registrados</div>
+      </div>
+      <div class="landing__stat">
+        <div class="landing__stat-value" id="stat-patients">--</div>
+        <div class="landing__stat-label">Pacientes activos</div>
+      </div>
+      <div class="landing__stat">
+        <div class="landing__stat-value" id="stat-appointments">--</div>
+        <div class="landing__stat-label">Citas programadas</div>
+      </div>
+      <div class="landing__stat">
+        <div class="landing__stat-value" id="stat-patterns">7</div>
+        <div class="landing__stat-label">Patrones de diseno</div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Fetch public stats for the landing page
+    async function loadLandingStats() {
+      try {
+        const [doctors, patients, appointments] = await Promise.all([
+          fetch('/api/v1/doctors/').then(r => r.json()),
+          fetch('/api/v1/patients/').then(r => r.json()),
+          fetch('/api/v1/appointments/').then(r => r.json()),
+        ]);
+        document.getElementById('stat-doctors').textContent = doctors.length;
+        document.getElementById('stat-patients').textContent = patients.length;
+        document.getElementById('stat-appointments').textContent = appointments.length;
+      } catch (e) {
+        console.error('Error loading stats:', e);
+      }
+    }
+    loadLandingStats();
+  </script>
+</body>
+</html>

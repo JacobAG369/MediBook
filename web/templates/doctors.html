@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}MediBook — Doctores{% endblock %}
+
+{% block page_title %}Doctores{% endblock %}
+{% block page_subtitle %}Directorio de profesionales de la salud{% endblock %}
+
+{% block content %}
+<div class="doctor-grid" id="doctor-grid">
+  <div class="card" style="text-align:center; padding:3rem;">
+    <p class="text-muted">Cargando doctores...</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth()) return;
+
+    try {
+      const doctors = await apiFetch('/api/v1/doctors/');
+      const grid = document.getElementById('doctor-grid');
+
+      if (doctors.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><p>No hay doctores registrados</p></div>';
+        return;
+      }
+
+      grid.innerHTML = doctors.map(d => `
+        <div class="doctor-card">
+          <div class="doctor-card__name">${d.name}</div>
+          <div class="doctor-card__specialty">${d.specialty ? d.specialty.name : 'Sin especialidad'}</div>
+          ${d.email ? `<div class="doctor-card__detail">${d.email}</div>` : ''}
+          ${d.phone ? `<div class="doctor-card__detail">${d.phone}</div>` : ''}
+          <div style="margin-top: 0.75rem;">
+            <span class="badge badge--${d.active ? 'active' : 'inactive'}">
+              ${d.active ? 'Activo' : 'Inactivo'}
+            </span>
+          </div>
+        </div>
+      `).join('');
+
+    } catch (err) {
+      console.error('Error loading doctors:', err);
+    }
+  });
+</script>
+{% endblock %}

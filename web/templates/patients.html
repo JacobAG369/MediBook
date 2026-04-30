@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}MediBook — Pacientes{% endblock %}
+
+{% block page_title %}Pacientes{% endblock %}
+{% block page_subtitle %}Registro de pacientes del sistema{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card__header">
+    <h3 class="card__title">Todos los Pacientes</h3>
+  </div>
+  <div class="table-wrapper" style="border:none; background:transparent; backdrop-filter:none;">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre Completo</th>
+          <th>Email</th>
+          <th>Telefono</th>
+          <th>Fecha de Nacimiento</th>
+        </tr>
+      </thead>
+      <tbody id="patients-table">
+        <tr><td colspan="5" class="text-muted" style="text-align:center; padding:2rem;">Cargando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth()) return;
+
+    try {
+      const patients = await apiFetch('/api/v1/patients/');
+      const tbody = document.getElementById('patients-table');
+
+      if (patients.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Sin pacientes registrados</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = patients.map(p => `
+        <tr>
+          <td>${p.id}</td>
+          <td style="color: var(--color-text-primary); font-weight: 500;">${p.full_name}</td>
+          <td>${p.email || '—'}</td>
+          <td>${p.phone || '—'}</td>
+          <td>${p.date_of_birth ? formatDate(p.date_of_birth) : '—'}</td>
+        </tr>
+      `).join('');
+
+    } catch (err) {
+      console.error('Error loading patients:', err);
+    }
+  });
+</script>
+{% endblock %}
