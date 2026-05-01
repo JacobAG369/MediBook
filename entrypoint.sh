@@ -14,7 +14,11 @@ python -m alembic upgrade head
 
 echo "✅ Migraciones aplicadas."
 
-# 2. Arrancar la API con Uvicorn
+# 2. Crear usuario admin si no existe
+echo "👤 Verificando usuario administrador..."
+python -m medibook.scripts.seed_admin
+
+# 3. Arrancar la API con Uvicorn
 echo "🚀 Iniciando servidor en puerto 8000..."
 exec uvicorn medibook.main:app \
     --host 0.0.0.0 \
