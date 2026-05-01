@@ -50,7 +50,7 @@ COPY alembic/ ./alembic/
 COPY alembic.ini .
 
 # Copiar el entrypoint
-COPY docker/entrypoint.sh .
+COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
 # Cambiar al usuario no-root
