@@ -1,0 +1,101 @@
+# ===========================
+# MediBook — CI Pipeline (GitHub Actions)
+# ===========================
+# Ejecuta linter, tests y build en cada push/PR.
+
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.13"
+  DATABASE_URL: "postgresql://test:test@localhost:5432/medibook_test"
+  SECRET_KEY: "ci-test-secret-key-not-for-production"
+
+jobs:
+  # ---------- Lint ----------
+  lint:
+    name: 🧹 Lint (Ruff)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Instalar Ruff
+        run: pip install ruff==0.11.8
+
+      - name: Ejecutar linter
+        run: ruff check medibook/
+
+  # ---------- Tests ----------
+  test:
+    name: 🧪 Tests (pytest + coverage)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: medibook_test
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Ejecutar tests con cobertura
+        run: |
+          pytest tests/ \
+            --cov=medibook \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --tb=short \
+            -v
+
+      - name: Subir reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+
+  # ---------- Build Docker ----------
+  build:
+    name: 🐳 Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir imagen Docker
+        run: |
+          docker build \
+            -t medibook:${{ github.sha }} \
+            -t medibook:latest \
+            .
+
+      - name: Verificar imagen
+        run: docker images medibook
