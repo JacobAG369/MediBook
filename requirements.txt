@@ -25,6 +25,7 @@ python-dotenv==1.1.0
 # Seguridad (Fase 3)
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+bcrypt==4.0.1                   # Última versión compatible con passlib 1.7.4 (>=4.1 rompe __about__)
 slowapi==0.1.9
 python-multipart==0.0.26
 itsdangerous>=2.1.2          # Requerido por SessionMiddleware de Starlette
