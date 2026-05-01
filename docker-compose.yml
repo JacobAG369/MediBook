@@ -1,0 +1,62 @@
+# ===========================
+# MediBook — Docker Compose
+# ===========================
+# Levanta la API y PostgreSQL con un solo comando:
+#   docker compose up --build
+#
+# Para ejecutar en background:
+#   docker compose up -d --build
+
+services:
+  # ---------- API ----------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medibook-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://medibook:medibook_secret@db:5432/medibook_db
+      - SECRET_KEY=${SECRET_KEY:-dev-medibook-docker-secret-key-2026}
+      - ALGORITHM=${ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      - UVICORN_WORKERS=${UVICORN_WORKERS:-2}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - medibook-net
+
+  # ---------- PostgreSQL ----------
+  db:
+    image: postgres:16-alpine
+    container_name: medibook-db
+    environment:
+      POSTGRES_DB: medibook_db
+      POSTGRES_USER: medibook
+      POSTGRES_PASSWORD: medibook_secret
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"   # 5433 externo para no chocar con PostgreSQL local
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medibook -d medibook_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - medibook-net
+
+# ---------- Volumes ----------
+volumes:
+  pgdata:
+    driver: local
+
+# ---------- Networks ----------
+networks:
+  medibook-net:
+    driver: bridge

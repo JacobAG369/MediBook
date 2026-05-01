@@ -1,0 +1,56 @@
+# ===========================
+# MediBook — .dockerignore
+# ===========================
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Entorno virtual
+venv/
+env/
+.venv/
+
+# Variables de entorno (NUNCA incluir en la imagen)
+.env
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+test_medibook.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Docker (no recursivo)
+Dockerfile
+docker-compose.yml
+docker/
+
+# Documentación innecesaria en runtime
+*.md
+!README.md
+ROADMAP_PRODUCCION.md
+
+# Alembic versions se incluyen (necesarios para migraciones)
+# pero NO la DB de dev
+medibook.db
+*.db
+
+# Gemini / AI
+.gemini/

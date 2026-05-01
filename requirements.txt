@@ -1,0 +1,38 @@
+# MediBook - Dependencias de Producción
+# =======================================
+
+# ORM y Base de Datos
+SQLAlchemy==2.0.40
+psycopg2-binary==2.9.10
+
+# Framework Web
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+
+# Validación y Schemas
+pydantic==2.11.1
+pydantic-settings==2.9.1
+email-validator==2.2.0
+
+# Migraciones de BD
+alembic==1.15.2
+
+# Variables de entorno
+python-dotenv==1.1.0
+
+# Seguridad (Fase 3)
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+slowapi==0.1.9
+python-multipart==0.0.26
+itsdangerous>=2.1.2          # Requerido por SessionMiddleware de Starlette
+
+# ------- Desarrollo y Testing -------
+
+# Testing
+pytest==8.3.5
+pytest-cov==6.1.1
+httpx==0.28.1
+
+# Linter / Formatter
+ruff==0.11.8

@@ -1,0 +1,48 @@
+# ===========================
+# MediBook - .gitignore
+# ===========================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# --- Entornos virtuales ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Variables de entorno (SECRETOS) ---
+.env
+
+# --- Bases de datos locales ---
+*.db
+*.sqlite3
+
+# --- IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Testing ---
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Alembic (archivos temporales) ---
+alembic/versions/__pycache__/
