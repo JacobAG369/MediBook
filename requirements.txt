@@ -8,6 +8,8 @@ psycopg2-binary==2.9.10
 # Framework Web
 fastapi==0.115.12
 uvicorn[standard]==0.34.2
+jinja2==3.1.6
+aiofiles==24.1.0
 
 # Validación y Schemas
 pydantic==2.11.1
