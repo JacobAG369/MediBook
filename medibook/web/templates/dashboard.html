@@ -4,11 +4,30 @@
 {% block page_title %}Dashboard{% endblock %}
 {% block page_subtitle %}Resumen general del sistema{% endblock %}
 
+
+
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 {% endblock %}
 
 {% block content %}
+<!-- Panel Recepcionista (oculto por defecto) -->
+<div id="receptionist-welcome" style="display:none;">
+  <div class="card" style="max-width:560px;margin:3rem auto;text-align:center;padding:2.5rem;">
+    <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#0ea5e9);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
+      <svg viewBox="0 0 24 24" style="width:32px;height:32px;stroke:#fff;fill:none;stroke-width:2;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </div>
+    <h2 style="margin:0 0 0.5rem;font-size:1.5rem;">¡Bienvenida!</h2>
+    <p id="recep-name" style="color:var(--color-text-secondary);margin-bottom:1.75rem;">Recepcionista</p>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+      <a href="/web/appointments" class="btn btn--primary" id="recep-appt-btn">Ver Citas</a>
+      <a href="/web/patients" class="btn btn--ghost" id="recep-patient-btn">Ver Pacientes</a>
+    </div>
+  </div>
+</div>
+
+<!-- Dashboard principal (admin / doctor) -->
+<div id="main-dashboard">
 <!-- Accesos rápidos -->
 <div class="quick-actions">
   <a href="/web/appointments" class="quick-action" id="qa-new-appt">
@@ -140,6 +159,7 @@
     </table>
   </div>
 </div>
+</div><!-- /#main-dashboard -->
 {% endblock %}
 
 {% block scripts %}
@@ -147,12 +167,47 @@
   document.addEventListener('DOMContentLoaded', () => {
     if (!requireAuth()) return;
 
+    const user = getUser();
+    const role = (user && user.role) ? user.role.toUpperCase() : '';
+
+    // PATIENT: sin acceso al dashboard
+    if (role === 'PATIENT' || !role) {
+      window.location.href = '/web/login';
+      return;
+    }
+
+    // RECEPTIONIST: pantalla de bienvenida
+    if (role === 'RECEPTIONIST') {
+      document.getElementById('main-dashboard').style.display = 'none';
+      document.getElementById('receptionist-welcome').style.display = 'block';
+      document.getElementById('recep-name').textContent = user.username || 'Recepcionista';
+      return;
+    }
+
     Promise.all([
       apiFetch('/api/v1/appointments/').catch(() => []),
       apiFetch('/api/v1/doctors/?active_only=false').catch(() => []),
       apiFetch('/api/v1/patients/').catch(() => []),
       fetch('/api/v1/health').then(r => r.json()).catch(() => ({ status: 'unknown' })),
-    ]).then(([appointments, doctors, patients, health]) => {
+    ]).then(([allAppointments, doctors, patients, health]) => {
+
+      // DOCTOR: filtrar solo sus propias citas
+      let appointments = allAppointments;
+      let myDoctor = null;
+      if (role === 'DOCTOR') {
+        myDoctor = doctors.find(d => d.email === user.email);
+        if (myDoctor) {
+          appointments = allAppointments.filter(a => a.doctor_id === myDoctor.id);
+        }
+        // Ajustar título
+        document.querySelector('.page-subtitle') && (document.querySelector('.page-subtitle').textContent =
+          myDoctor ? `Mis citas — ${myDoctor.name}` : 'Mis estadísticas');
+        // Ocultar KPI de doctores y pacientes (no relevantes para el doctor)
+        const kpiDoctors = document.getElementById('kpi-doctors');
+        const kpiPatients = document.getElementById('kpi-patients');
+        if (kpiDoctors) kpiDoctors.closest('.kpi-card').style.display = 'none';
+        if (kpiPatients) kpiPatients.closest('.kpi-card').style.display = 'none';
+      }
 
       // ── KPIs ──────────────────────────────────────────────────────
       const activas = appointments.filter(a => a.status !== 'CANCELLED').length;
