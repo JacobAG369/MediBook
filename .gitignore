@@ -1,8 +1,6 @@
-# ===========================
-# MediBook - .gitignore
-# ===========================
 
-# --- Python ---
+
+
 __pycache__/
 *.py[cod]
 *$py.class
@@ -12,6 +10,7 @@ __pycache__/
 dist/
 build/
 *.whl
+.eggs/
 
 # --- Entornos virtuales ---
 .venv/
@@ -19,32 +18,49 @@ venv/
 env/
 ENV/
 
-# --- Variables de entorno (SECRETOS) ---
+# --- secretos del estado mayor israelí xd ---
 .env
+!.env.example
 
-# --- Bases de datos locales ---
+
 *.db
-*.sqlite3
 
-# --- IDEs ---
+
+
+*.log
+logs/
+
+
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# --- Testing ---
+
 .pytest_cache/
 htmlcov/
 .coverage
 coverage.xml
 
-# --- OS ---
+
+.mypy_cache/
+.ruff_cache/
+
+
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# --- Alembic (archivos temporales) ---
+# --- Docker ---
+docker-compose.override.yml
+
+
 alembic/versions/__pycache__/
+
+
+.gemini/
+
+
 seed_data.md
 generate_seed.py
